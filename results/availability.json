@@ -1,0 +1,181 @@
+{
+  "inputs": {
+    "Load Balancer": {
+      "unit_availability": 0.9995,
+      "units": 1
+    },
+    "API Gateway": {
+      "unit_availability": 0.999,
+      "units": 1
+    },
+    "Auth": {
+      "unit_availability": 0.995,
+      "units": 2
+    },
+    "Course": {
+      "unit_availability": 0.995,
+      "units": 2
+    },
+    "Registration": {
+      "unit_availability": 0.995,
+      "units": 2
+    },
+    "Database": {
+      "unit_availability": 0.997,
+      "units": 2
+    }
+  },
+  "tiers": {
+    "Load Balancer": {
+      "formula": "single unit",
+      "availability": 0.9995
+    },
+    "API Gateway": {
+      "formula": "single unit",
+      "availability": 0.999
+    },
+    "Auth": {
+      "formula": "1-(1-0.995)^2",
+      "availability": 0.999975
+    },
+    "Course": {
+      "formula": "1-(1-0.995)^2",
+      "availability": 0.999975
+    },
+    "Registration": {
+      "formula": "1-(1-0.995)^2",
+      "availability": 0.999975
+    },
+    "Database": {
+      "formula": "1-(1-0.997)^2",
+      "availability": 0.999991
+    }
+  },
+  "end_to_end": {
+    "availability": 0.998417,
+    "percent": 99.8417,
+    "target": 0.999,
+    "meets_target": false,
+    "gap_pp": 0.0583,
+    "hours_per_year": 13.87,
+    "minutes_per_month": 68.4,
+    "target_downtime": {
+      "hours_per_year": 8.76,
+      "minutes_per_month": 43.2
+    }
+  },
+  "unavailability_share_percent": {
+    "Load Balancer": 31.57,
+    "API Gateway": 63.13,
+    "Auth": 1.58,
+    "Course": 1.58,
+    "Registration": 1.58,
+    "Database": 0.57
+  },
+  "bottleneck": "API Gateway",
+  "journeys": {
+    "All services (assignment chain)": 0.998417,
+    "Enroll in a course: LB-GW-Auth-Registration-DB": 0.998442,
+    "Timetable lookup: LB-GW-Auth-Course-DB": 0.998442
+  },
+  "plus_one_replica_sweep": [
+    {
+      "change": "API Gateway: 1 -> 2",
+      "availability": 0.999415,
+      "gain_pp": 0.0998,
+      "meets_target": true,
+      "hours_per_year": 5.12,
+      "minutes_per_month": 25.27
+    },
+    {
+      "change": "Load Balancer: 1 -> 2",
+      "availability": 0.998916,
+      "gain_pp": 0.0499,
+      "meets_target": false,
+      "hours_per_year": 9.5,
+      "minutes_per_month": 46.84
+    },
+    {
+      "change": "Auth: 2 -> 3",
+      "availability": 0.998441,
+      "gain_pp": 0.0025,
+      "meets_target": false,
+      "hours_per_year": 13.65,
+      "minutes_per_month": 67.33
+    },
+    {
+      "change": "Course: 2 -> 3",
+      "availability": 0.998441,
+      "gain_pp": 0.0025,
+      "meets_target": false,
+      "hours_per_year": 13.65,
+      "minutes_per_month": 67.33
+    },
+    {
+      "change": "Registration: 2 -> 3",
+      "availability": 0.998441,
+      "gain_pp": 0.0025,
+      "meets_target": false,
+      "hours_per_year": 13.65,
+      "minutes_per_month": 67.33
+    },
+    {
+      "change": "Database: 2 -> 3",
+      "availability": 0.998426,
+      "gain_pp": 0.0009,
+      "meets_target": false,
+      "hours_per_year": 13.79,
+      "minutes_per_month": 68.01
+    }
+  ],
+  "upgrade_options": {
+    "Baseline": {
+      "availability": 0.998417,
+      "meets_target": false,
+      "hours_per_year": 13.87,
+      "minutes_per_month": 68.4
+    },
+    "2x API Gateway": {
+      "availability": 0.999415,
+      "meets_target": true,
+      "hours_per_year": 5.12,
+      "minutes_per_month": 25.27
+    },
+    "2x Load Balancer": {
+      "availability": 0.998916,
+      "meets_target": false,
+      "hours_per_year": 9.5,
+      "minutes_per_month": 46.84
+    },
+    "2x API Gateway + 2x Load Balancer": {
+      "availability": 0.999915,
+      "meets_target": true,
+      "hours_per_year": 0.75,
+      "minutes_per_month": 3.68
+    }
+  },
+  "monte_carlo_baseline": {
+    "samples": 2000000,
+    "seed": 2026,
+    "availability": 0.998451,
+    "ci95": [
+      0.998396,
+      0.998505
+    ]
+  },
+  "monte_carlo_2x_gateway": {
+    "samples": 2000000,
+    "seed": 2026,
+    "availability": 0.999412,
+    "ci95": [
+      0.999378,
+      0.999446
+    ]
+  },
+  "capacity_note": {
+    "peak_rps": 500,
+    "rule": "N+1: with 2 replicas the survivor must carry 100% of peak",
+    "required_rps_per_registration_pod_if_one_fails": 500,
+    "required_rps_per_pod_when_both_up": 250.0
+  }
+}

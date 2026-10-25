@@ -1,0 +1,131 @@
+# Part C artifact - Synthetic AITU Registration Service.
+# Educational configuration only: no real AITU credentials, endpoints or infrastructure.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: registration-config
+  namespace: aitu-a3
+data:
+  PORT: "8080"
+  DB_HOST: registration-db.aitu-a3.svc.cluster.local   # service discovery via CoreDNS
+  DB_PORT: "5432"
+  DB_TIMEOUT_MS: "400"        # < 500 ms API budget: a hung DB can never stall a request past SLA
+  READY_CACHE_SECONDS: "0.5"
+  DRAIN_SECONDS: "5"
+  CHAOS_ENABLED: "1"          # lab only: /chaos/* reachable from inside the pod (127.0.0.1) only
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registration-service
+  namespace: aitu-a3
+  labels:
+    app: registration-service
+    tier: backend
+spec:
+  replicas: 2                               # [1] two active replicas -> R = 1-(1-0.995)^2
+  revisionHistoryLimit: 5                   # fast `kubectl rollout undo`
+  minReadySeconds: 3                        # a new pod must stay Ready 3 s before it counts
+  strategy:
+    type: RollingUpdate                     # [5] rolling update
+    rollingUpdate:
+      maxSurge: 1                           # add one new pod first ...
+      maxUnavailable: 0                     # ... never drop below 2 serving pods
+  selector:
+    matchLabels:
+      app: registration-service
+  template:
+    metadata:
+      labels:
+        app: registration-service
+        tier: backend
+    spec:
+      restartPolicy: Always                 # [6] automatic restart by kubelet (+ ReplicaSet re-creation)
+      terminationGracePeriodSeconds: 20
+      affinity:
+        podAntiAffinity:                    # spread replicas over nodes when >1 node exists
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: registration-service
+      containers:
+        - name: registration
+          image: aitu-a3/registration:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: registration-config
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: DB_NAME
+              valueFrom: {secretKeyRef: {name: registration-db-credentials, key: POSTGRES_DB}}
+            - name: DB_USER
+              valueFrom: {secretKeyRef: {name: registration-db-credentials, key: POSTGRES_USER}}
+            - name: DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: registration-db-credentials, key: POSTGRES_PASSWORD}}
+          startupProbe:                     # protects slow cold starts from liveness kills
+            httpGet: {path: /livez, port: http}
+            periodSeconds: 1
+            failureThreshold: 30
+          readinessProbe:                   # [2] readiness: DB reachable within 400 ms?
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 2
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 2             # out of rotation after ~2-4 s of failure
+          livenessProbe:                    # [3] liveness: process answers? (never checks DB)
+            httpGet: {path: /livez, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 1
+            failureThreshold: 3             # restart after ~15 s hung
+          lifecycle:
+            preStop:                        # let EndpointSlice removal propagate before SIGTERM
+              exec:
+                command: ["sleep", "3"]
+          resources:                        # [4] requests and limits
+            requests:
+              cpu: 150m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 192Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+---
+# [7] Service discovery: stable ClusterIP + DNS name registration-service.aitu-a3.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: registration-service
+  namespace: aitu-a3
+spec:
+  type: ClusterIP
+  selector:
+    app: registration-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# Voluntary-disruption guard: node drains / cluster upgrades may never evict both replicas.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: registration-pdb
+  namespace: aitu-a3
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: registration-service

@@ -1,0 +1,75 @@
+# Synthetic PostgreSQL for the Registration Service.
+# Lab simplification: ONE database pod. The report's 2-node design (primary + hot
+# standby with streaming replication) is described in docs/dr-plan.md; a single pod
+# here lets Experiment 3 take the whole database away and observe the services.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registration-db-credentials
+  namespace: aitu-a3
+type: Opaque
+stringData:
+  POSTGRES_DB: registration
+  POSTGRES_USER: registration_app
+  POSTGRES_PASSWORD: synthetic-lab-password-not-real
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registration-db
+  namespace: aitu-a3
+spec:
+  selector:
+    app: registration-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: registration-db
+  namespace: aitu-a3
+spec:
+  serviceName: registration-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registration-db
+  template:
+    metadata:
+      labels:
+        app: registration-db
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          envFrom:
+            - secretRef:
+                name: registration-db-credentials
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "registration_app", "-d", "registration"]
+            periodSeconds: 2
+            failureThreshold: 2
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

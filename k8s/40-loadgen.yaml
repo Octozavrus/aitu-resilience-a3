@@ -1,0 +1,26 @@
+# Idle in-cluster traffic generator. The experiment harness runs loadgen.py inside it
+# with `kubectl exec`, so traffic goes Gateway Service -> Registration Service exactly
+# like real student traffic (no port-forward, which would pin one pod).
+# The script itself is mounted from ConfigMap "loadgen-script" (created by `make deploy`).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: student-traffic
+  namespace: aitu-a3
+  labels:
+    app: student-traffic
+spec:
+  containers:
+    - name: loadgen
+      image: python:3.12-slim
+      command: ["sleep", "infinity"]
+      resources:
+        requests: {cpu: 100m, memory: 64Mi}
+        limits: {cpu: "1", memory: 256Mi}
+      volumeMounts:
+        - name: script
+          mountPath: /opt/loadgen
+  volumes:
+    - name: script
+      configMap:
+        name: loadgen-script

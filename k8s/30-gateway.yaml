@@ -1,0 +1,101 @@
+# Synthetic API Gateway: 2 stateless NGINX replicas (the Part B bottleneck fix).
+# Enforces the 500 ms latency budget with explicit upstream timeouts and one retry.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: aitu-a3
+data:
+  default.conf: |
+    # The Service VIP is listed twice so that `proxy_next_upstream error` really retries:
+    # the retry opens a NEW connection through kube-proxy, which picks a (possibly
+    # different) Ready pod. max_fails=0: never mark the VIP itself as down.
+    # No upstream keepalive on purpose - a pooled connection would pin traffic to one pod.
+    upstream registration {
+        server registration-service.aitu-a3.svc.cluster.local:80 max_fails=0;
+        server registration-service.aitu-a3.svc.cluster.local:80 max_fails=0;
+    }
+    server {
+        listen 8080;
+        location = /healthz { access_log off; return 200 "ok\n"; }
+
+        location /api/registration/ {
+            proxy_pass http://registration;
+            proxy_connect_timeout 150ms;   # connection budget
+            proxy_read_timeout    450ms;   # total stays under the 500 ms SLA
+            proxy_send_timeout    450ms;
+            # Retry ONCE, on connection errors only (not timeout/503: a DB outage should fail
+            # fast, not double the latency). NGINX never retries POST (non-idempotent) by
+            # default, so enrollments are retried by the client with the same Idempotency-Key.
+            proxy_next_upstream error;
+            proxy_next_upstream_tries 2;
+            add_header X-Gateway-Pod $hostname always;
+        }
+        location / { return 404 '{"error":"no route"}\n'; }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: aitu-a3
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 2
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {cpu: 300m, memory: 96Mi}
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: conf
+          configMap:
+            name: api-gateway-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: aitu-a3
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-pdb
+  namespace: aitu-a3
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: api-gateway

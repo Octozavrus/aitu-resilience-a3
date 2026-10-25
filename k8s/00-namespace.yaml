@@ -1,0 +1,8 @@
+# Synthetic AITU Digital Student Services Platform - Assignment 3
+# Educational configuration only: no real AITU credentials, endpoints or infrastructure.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aitu-a3
+  labels:
+    app.kubernetes.io/part-of: aitu-student-services-synthetic

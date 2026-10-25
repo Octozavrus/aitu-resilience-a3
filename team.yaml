@@ -1,0 +1,34 @@
+# Fill this in once - scripts/build_report.py puts it into the report.
+# Anything still containing "TODO" is printed in red in the .docx so you can't miss it.
+
+group: CSE-2507M            # e.g. CSE-25xx
+instructor: Serek Azamat
+variant: Standard common scenario (10,000 students, 500 req/s, 99.9% SLA)
+repo_url: https://github.com/Octozavrus/aitu-resilience-a3
+submission_date: 26/10/2026
+work_start: 25/10/2026 
+work_end: 26/10/2026 
+
+# One entry per student. "owns" = the files that student committed (keep it true to git log).
+members:
+  - name: Amirsultan Shakenov
+    id: 0000
+    github: 
+    owns: "Availability model and figures (scripts/availability.py, scripts/diagrams.py), DR plan (docs/dr-plan.md)"
+  - name: Dair Karatay
+    id: 0000
+    github: 
+    owns: "Registration service and manifests (app/registration/, k8s/10-postgres.yaml, k8s/20-registration.yaml)"
+  - name: Aslan Abishev
+    id: 0000
+    github: 
+    owns: "Gateway, traffic generator and experiments (k8s/30-gateway.yaml, k8s/40-loadgen.yaml, app/loadgen/, scripts/experiments.py)"
+
+# Section 4 of the submission record. Write these in YOUR OWN words after you run
+# everything - the instructor will ask about them in the oral defense.
+individual:
+  problem_encountered: >-
+    No problems in general, will describe later
+  limitation: >-
+    three-node lab cluster so both replicas share one machine; one DB pod in
+    the lab instead of primary + standby; load of 20 req/s instead of 500 req/s.

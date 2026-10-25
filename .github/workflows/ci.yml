@@ -1,0 +1,31 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_DB: registration, POSTGRES_USER: registration_app, POSTGRES_PASSWORD: ci}
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 2s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements-dev.txt -r app/registration/requirements.txt
+      - name: Validate Kubernetes manifests
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          ./kubeconform -strict -summary k8s/
+      - name: Availability model
+        run: python scripts/availability.py
+      - name: Service smoke test against real PostgreSQL
+        env: {DB_PASSWORD: ci}
+        run: |
+          python app/registration/service.py & sleep 2
+          curl -fsS localhost:8080/livez
+          curl -fsS localhost:8080/ready
+          curl -fsS localhost:8080/api/registration/courses
+          curl -fsS -XPOST -H 'Idempotency-Key: ci-1' -d '{"student_id":"S1","section_id":"CS-2101-01"}' localhost:8080/api/registration/enroll
+          python app/loadgen/loadgen.py --url http://localhost:8080 --rate 20 --duration 3 | python -c "import sys,json; r=[json.loads(l) for l in sys.stdin]; bad=[x for x in r if x['status']>=500 or x['status']==0]; print(len(r),'requests',len(bad),'failed'); sys.exit(1 if bad else 0)"

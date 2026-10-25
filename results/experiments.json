@@ -1,0 +1,188 @@
+{
+  "run_at": "2026-10-25T18:57:11+00:00",
+  "kubernetes_server": "v1.36.1",
+  "namespace": "aitu-a3",
+  "load": {
+    "rate_rps": 20.0,
+    "duration_s": 60.0,
+    "inject_at_s": 15.0
+  },
+  "experiments": [
+    {
+      "experiment": 1,
+      "name": "One Registration replica fails",
+      "injection": "process crash in 1 of 2 pods (os._exit via in-pod /chaos/crash)",
+      "detection_s": 0.39,
+      "detection_signal": "Ready registration pods < 2 (pod Ready condition / EndpointSlice)",
+      "first_failed_request_after_injection_s": 0.04,
+      "recovery_s": 1.38,
+      "recovery_after_restore_s": null,
+      "min_ready_pods": 1,
+      "requests_total": 1200,
+      "requests_failed": 2,
+      "success_percent": 99.83,
+      "error_window_s": 0.1,
+      "failed_by_status": {
+        "502": 2
+      },
+      "p50_ms_ok": 19.1,
+      "p95_ms_ok": 29.2,
+      "p99_ms_ok": 34.8,
+      "p95_ms_failed": 70.2,
+      "ok_over_500ms": 0,
+      "served_by": {
+        "registration-service-668f5c59c6-r46rl": 578,
+        "registration-service-668f5c59c6-vpqmg": 620
+      },
+      "restarts_before": 0,
+      "restarts_after": 1,
+      "pods_before": [
+        "registration-service-668f5c59c6-r46rl",
+        "registration-service-668f5c59c6-vpqmg"
+      ],
+      "pods_after": [
+        "registration-service-668f5c59c6-r46rl",
+        "registration-service-668f5c59c6-vpqmg"
+      ],
+      "pods_recreated": [],
+      "t_inject": 1792954353.9552715,
+      "t_restore": null,
+      "load_rate_rps": 20.0,
+      "load_duration_s": 60.0
+    },
+    {
+      "experiment": 2,
+      "name": "All Registration replicas fail",
+      "injection": "both pods force-deleted (kubectl delete pod --grace-period=0 --force)",
+      "detection_s": 0.21,
+      "detection_signal": "Ready registration pods < 2 (pod Ready condition / EndpointSlice)",
+      "first_failed_request_after_injection_s": 1.12,
+      "recovery_s": 2.6,
+      "recovery_after_restore_s": null,
+      "min_ready_pods": 0,
+      "requests_total": 1200,
+      "requests_failed": 25,
+      "success_percent": 97.92,
+      "error_window_s": 1.2,
+      "failed_by_status": {
+        "502": 6,
+        "504": 19
+      },
+      "p50_ms_ok": 18.3,
+      "p95_ms_ok": 25.0,
+      "p99_ms_ok": 30.0,
+      "p95_ms_failed": 151.7,
+      "ok_over_500ms": 0,
+      "served_by": {
+        "registration-service-668f5c59c6-k5qd8": 446,
+        "registration-service-668f5c59c6-qv4cv": 408,
+        "registration-service-668f5c59c6-r46rl": 148,
+        "registration-service-668f5c59c6-vpqmg": 173
+      },
+      "restarts_before": 1,
+      "restarts_after": 0,
+      "pods_before": [
+        "registration-service-668f5c59c6-r46rl",
+        "registration-service-668f5c59c6-vpqmg"
+      ],
+      "pods_after": [
+        "registration-service-668f5c59c6-k5qd8",
+        "registration-service-668f5c59c6-qv4cv"
+      ],
+      "pods_recreated": [
+        "registration-service-668f5c59c6-k5qd8",
+        "registration-service-668f5c59c6-qv4cv"
+      ],
+      "t_inject": 1792954428.0087874,
+      "t_restore": null,
+      "load_rate_rps": 20.0,
+      "load_duration_s": 60.0
+    },
+    {
+      "experiment": 3,
+      "name": "Database unavailable",
+      "injection": "registration-db StatefulSet scaled to 0 for 20 s",
+      "detection_s": 4.81,
+      "detection_signal": "Ready registration pods < 2 (pod Ready condition / EndpointSlice)",
+      "first_failed_request_after_injection_s": 0.34,
+      "recovery_s": 22.79,
+      "recovery_after_restore_s": 2.59,
+      "min_ready_pods": 0,
+      "requests_total": 1200,
+      "requests_failed": 454,
+      "success_percent": 62.17,
+      "error_window_s": 37.55,
+      "failed_by_status": {
+        "502": 6,
+        "503": 108,
+        "504": 340
+      },
+      "p50_ms_ok": 17.7,
+      "p95_ms_ok": 22.7,
+      "p99_ms_ok": 28.4,
+      "p95_ms_failed": 404.8,
+      "ok_over_500ms": 0,
+      "served_by": {
+        "registration-service-668f5c59c6-k5qd8": 375,
+        "registration-service-668f5c59c6-qv4cv": 371
+      },
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "pods_before": [
+        "registration-service-668f5c59c6-k5qd8",
+        "registration-service-668f5c59c6-qv4cv"
+      ],
+      "pods_after": [
+        "registration-service-668f5c59c6-k5qd8",
+        "registration-service-668f5c59c6-qv4cv"
+      ],
+      "pods_recreated": [],
+      "t_inject": 1792954502.1307175,
+      "t_restore": 1792954522.3293562,
+      "load_rate_rps": 20.0,
+      "load_duration_s": 60.0
+    },
+    {
+      "experiment": 4,
+      "name": "(bonus) One replica hangs",
+      "injection": "/livez of 1 pod stops answering (simulated deadlock)",
+      "detection_s": 18.74,
+      "detection_signal": "Ready registration pods < 2 (pod Ready condition / EndpointSlice)",
+      "first_failed_request_after_injection_s": null,
+      "recovery_s": 23.66,
+      "recovery_after_restore_s": null,
+      "min_ready_pods": 1,
+      "requests_total": 1200,
+      "requests_failed": 1,
+      "success_percent": 99.92,
+      "error_window_s": 0.0,
+      "failed_by_status": {
+        "503": 1
+      },
+      "p50_ms_ok": 17.9,
+      "p95_ms_ok": 25.4,
+      "p99_ms_ok": 30.4,
+      "p95_ms_failed": 404.4,
+      "ok_over_500ms": 0,
+      "served_by": {
+        "registration-service-668f5c59c6-k5qd8": 644,
+        "registration-service-668f5c59c6-qv4cv": 555
+      },
+      "restarts_before": 0,
+      "restarts_after": 1,
+      "pods_before": [
+        "registration-service-668f5c59c6-k5qd8",
+        "registration-service-668f5c59c6-qv4cv"
+      ],
+      "pods_after": [
+        "registration-service-668f5c59c6-k5qd8",
+        "registration-service-668f5c59c6-qv4cv"
+      ],
+      "pods_recreated": [],
+      "t_inject": 1792954576.1481898,
+      "t_restore": null,
+      "load_rate_rps": 20.0,
+      "load_duration_s": 60.0
+    }
+  ]
+}

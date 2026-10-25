@@ -1,0 +1,13 @@
+{
+  "backup_seconds": 0.36,
+  "backup_bytes": 15961,
+  "pods_ready_during_corruption": "true true",
+  "api_ok_during_corruption": false,
+  "restore_seconds": 0.25,
+  "service_ready_seconds": 0.52,
+  "outage_seconds_total": 3.35,
+  "rows_before": 364,
+  "rows_after": 364,
+  "data_complete": true,
+  "method": "pg_dump -Fc -> copy out of cluster -> DROP TABLE -> pg_restore --clean"
+}
