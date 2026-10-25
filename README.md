@@ -81,21 +81,6 @@ pods again. *User impact* = computed from every logged request (`results/raw/exp
 Why the crash endpoint instead of `kubectl exec … kill -9 1`? The kernel ignores SIGKILL sent to a
 container's PID 1 from inside its own PID namespace, so that command silently does nothing.
 
-## 5. Things to be ready to explain in the oral defense
-
-* **Both replicas fail (exp 2):** the Service has no Ready endpoints, the gateway gets
-  connection refused and answers 502 at once; Auth/Course are unaffected. The ReplicaSet notices
-  0/2 and creates two pods; they receive traffic only after `/ready` passes (DB reachable).
-  The outage lasts roughly container start + first readiness success. A PDB does **not** prevent
-  this (it only blocks voluntary evictions).
-* **Why liveness must not check the DB:** in exp 3 the DB is down; if `/livez` checked it,
-  kubelet would restart healthy pods in a loop (CrashLoopBackOff) and recovery would be slower.
-* **Why the timeout chain:** DB 400 ms < gateway 450 ms < SLA 500 ms → fail fast, no pile-up.
-* **Why gateway ×2:** Part B — it is 63 % of all modelled downtime; with 2 replicas the system
-  meets 99.9 %, no back-end change can.
-* **HA ≠ DR:** in the DR drill pods stay Ready while the tables are gone. HA hides crashes; only
-  an out-of-cluster backup fixes a bad `DROP`.
-
 ## 6. Troubleshooting
 
 | Symptom | Fix |
